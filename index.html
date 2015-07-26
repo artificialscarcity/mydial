@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>Dorrest</title>
+	<meta name="viewport" content="initial-scale=1.5, user-scalable=no">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+	<script src="jquery.formatter.min.js"></script>
+</head>
+
+<body>
+
+<div class="container">
+	<p><input type="tel" id="phone"> phone</p>
+	<p><input type="time" id="startTime" value="08:00"> start time</p>
+	<p><input type="time" id="endTime"> end time</p>
+	<p><button id="button">wake me</button></p>
+	<p><button id="unbutton">don't wake me</button></p>
+</div>
+
+</body>
+</html>
+
+<script>
+$('#phone').formatter({
+  'pattern': '({{999}}) {{999}}-{{9999}}',
+  'persistent': true
+});
+
+$(function() {
+	initData = localStorage.getItem('data');
+	if (initData) {
+		initData = JSON.parse(initData);
+		$('#phone').val(initData.phoneFormatted);
+		$('#startTime').val((new Date(parseInt(initData.startTime+"000"))).toTimeString().split(' ')[0]);
+		$('#endTime').val((new Date(parseInt(initData.endTime+"000"))).toTimeString().split(' ')[0]);
+	}
+
+	$('#phone').focus();
+
+	$('#startTime').focusout(function() {
+		if ($('#endTime').val() != "") return;
+		var timeStr = $('#startTime').val();
+		var startHour = parseInt(timeStr.split(":")[0]);
+		var startMin = parseInt(timeStr.split(":")[1]);
+		console.log(startHour, startMin);
+		var endHour = startHour + 1;
+		if (endHour > 23) endHour = 0;
+		endHour = endHour <= 9 ? "0" + endHour : endHour;
+		var endMin = startMin <= 9 ? "0" + startMin : startMin;
+		console.log(endHour+':'+startMin);
+		$("#endTime").val(endHour+':'+endMin);
+	});
+
+	$('#button').click(function() {
+		var startTime = new Date(new Date().getTime() + 1000 * 60 * 60 * 24);
+		var endTime = new Date(startTime.getTime());
+		startTime.setHours(parseInt($('#startTime').val().split(':')[0]));
+		startTime.setMinutes(parseInt($('#startTime').val().split(':')[1]));
+		startTime.setSeconds(0);
+		endTime.setHours(parseInt($('#endTime').val().split(':')[0]));
+		endTime.setMinutes(parseInt($('#endTime').val().split(':')[1]));
+		endTime.setSeconds(0);
+
+		data = {
+			phone: $('#phone').val().replace(/\D/g,''),
+			phoneFormatted: $('#phone').val(),
+			startTime: Math.round(startTime.getTime() / 1000),
+			endTime: Math.round(endTime.getTime() / 1000),
+			wake: true,
+		};
+		localStorage.setItem('data', JSON.stringify(data));
+
+		$.ajax('/api/v1/house/user', {
+			data: JSON.stringify(data),
+			contentType : 'application/json',
+			type : 'POST',
+		}, function() {
+
+		});
+
+	});
+
+	$('#unbutton').click(function() {
+		$.ajax('/api/v1/house/user', {
+			data: JSON.stringify({
+				phone: $('#phone').val().replace(/\D/g,''),
+				wake: false,
+			}),
+			contentType : 'application/json',
+			type : 'POST'
+		});
+	});
+});
+</script>
+
+<style>
+body {
+	margin: 0;
+	padding: 0;
+}
+.container {
+	padding: 10px;
+	width: 320px;
+	background-color: #fff;
+}
+p {
+	margin: 0;
+	padding-top: 2px;
+	padding-bottom: 0px;
+}
+
+</style>
